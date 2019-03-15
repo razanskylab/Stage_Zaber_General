@@ -12,6 +12,7 @@
 
 function Move_Sin(VCS,amp,period,nMove)
   tic;
+  period = period*1000; % convert from seconds to ms
   vmax = amp*2*pi/(period*1e-3);
   accmax = amp*(2*pi/(period*1e-3)).^2;
 

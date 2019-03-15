@@ -25,7 +25,7 @@ classdef VoiceCoilStage < BaseHardwareClass
   properties(Constant)
 
     % serial properties
-    SERIAL_PORT = 'COM8';
+    SERIAL_PORT = 'COM5';
     DEVICE_ADDRESS = 1;
     BAUD_RATE = 115200;
     DATA_BITS = 8;
