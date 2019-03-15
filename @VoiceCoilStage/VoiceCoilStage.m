@@ -40,6 +40,9 @@ classdef VoiceCoilStage < BaseHardwareClass
     MAX_SPEED = 1500; % [mm/s] max speed limit = maxspeed setting of 12288000
 
     DO_AUTO_CONNECT = true; % connect when object is initialized?
+
+    POLLING_INTERVAL = 10;
+      % ms, time to wait between polling device stage whilte waiting to finish move...
   end
 
   % same as constant but now showing up as property
@@ -87,7 +90,7 @@ classdef VoiceCoilStage < BaseHardwareClass
     end
 
     function [] = Wait_Ready(VCS)
-      reply = VCS.Dev.waitforidle();
+      reply = VCS.Dev.waitforidle(VCS.POLLING_INTERVAL*1e-3);
       if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
         short_warn(reply.DataString);
       end
