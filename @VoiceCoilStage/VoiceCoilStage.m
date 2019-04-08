@@ -4,25 +4,43 @@
 classdef VoiceCoilStage < BaseHardwareClass
 
   properties
-    pos(1,1) {mustBeNumeric}; % [mm]
-    vel(1,1) {mustBeNumeric}; % [mm/s]
-    acc(1,1) {mustBeNumeric}; % [mm²/s]
+    pos(1,1) {mustBeNumeric,mustBeFinite}; % [mm]
+    vel(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm/s] not used in sine movement!!
+    acc(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm²/s] not used in sine movement!!
+    bScanRate(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [Hz] - B-scans per second for sin-move
+      % this is the basis from which period, max-speed, etc. are calculated
+    nBScans(1,1) {mustBeInteger,mustBeNonnegative,mustBeFinite} = 0;
+    range(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm] range of full motion during sin_mov
   end
 
   % depended properties are calculated from other properties
   properties (Dependent = true)
     % maxVel; % current max speead
     isConnected;
+    period(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [s] - period of full b-scan movement
+    nPeriods(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % number of full movement periods
+    moveTime(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [s] time to complete nBscans at desired Bscan rate
+    vMax(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm/s] max speed reached during sin-move
+    accMax(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm²/s] max accel reached during sin-move
   end
 
   % things we don't want to accidently change but that still might be interesting
-  properties(SetAccess = private)
+  properties (SetAccess = private)
     Dev; % zaber AsciiDevice, this is the zaber class used for all communication
     Serial; % serial port object, created in Connect, used by Dev
   end
 
   % things we don't want to accidently change but that still might be interesting
-  properties(Constant)
+  properties (Constant)
 
     % serial properties
     SERIAL_PORT = 'COM5';
@@ -35,7 +53,7 @@ classdef VoiceCoilStage < BaseHardwareClass
     TERMINATOR = 'CR/LF';
 
     STEP_SIZE = 0.2*1e-3; % [mm] one microstep = 0.2 micron
-    RANGE = [0 12]; % [mm] min / max range
+    RANGE = [0 12]; % [mm] min / max travel range
 
     MAX_SPEED = 1500; % [mm/s] max speed limit = maxspeed setting of 12288000
 
@@ -43,6 +61,11 @@ classdef VoiceCoilStage < BaseHardwareClass
 
     POLLING_INTERVAL = 10;
       % ms, time to wait between polling device stage whilte waiting to finish move...
+
+    % physical stage properties
+    MAX_FORCE = 12; % [N] absolute max is a bit higher, but this is recommended
+    BASE_MASS = 0.1; % [kg] mass of moving part of the stage when empty
+    ADDED_MASS = 0.1; % [kg] measured ~60g, without fiber, probably around this
   end
 
   % same as constant but now showing up as property
@@ -118,6 +141,46 @@ classdef VoiceCoilStage < BaseHardwareClass
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods % set / get methods
+    % simple dependend variables -----------------------------------------------
+    function [period] = get.period(VCS)
+      period = 1./(VCS.bScanRate)*2;
+    end
+
+    function [nPeriods] = get.nPeriods(VCS)
+      nPeriods = ceil(VCS.nBScans./2); % ceil is just to be on the safe side
+    end
+
+    function [moveTime] = get.moveTime(VCS)
+      moveTime = VCS.nPeriods*VCS.period;
+    end
+
+    function [vMax] = get.vMax(VCS)
+      vMax = VCS.range*2*pi/(VCS.period);
+    end
+
+    function [accMax] = get.accMax(VCS)
+      accMax = VCS.range*(2*pi/(VCS.period)).^2;
+    end
+
+    % --------------------------------------------------------------------------
+    function set.nBScans(VCS, nBScans)
+      if mod(nBScans,2)
+        short_warn('nBScans must be even number. Using next higher!');
+        VCS.nBScans = nBScans + 1;
+      else
+        VCS.nBScans = nBScans;
+      end
+    end
+
+    % --------------------------------------------------------------------------
+    function set.range(VCS, range)
+      if range + VCS.pos > max(VCS.RANGE) || range < min(VCS.RANGE)
+        short_warn('Requested sin_move range out of stage range!');
+      else
+        VCS.range = range; % convert to steps
+      end
+    end
+
 
     % --------------------------------------------------------------------------
     function set.pos(VCS, pos)

@@ -1,42 +1,39 @@
 % function [] = Move_Sin(VCS,amp,period,nMove)
-% amp = movement amplitude in mm
-% period = full period of movement in milliseconds
-% nMove (optional) = number of requested movements
 % see https://www.zaber.com/wiki/Manuals/ASCII_Protocol_Manual#move for details
 % Johannes Rebling, (johannesrebling@gmail.com), 2019
 
 % Additional NOTEs:
-% - vmax = a*2*pi/T
+% - VCS.vMax = a*2*pi/T
 % - accmax = a*(2*pi/T)^2
 % NOTE use the above to get the period based on desired / realistic max velocity
 
-function Move_Sin(VCS,amp,period,nMove)
+function Move_Sin(VCS)
   tic;
-  period = round(period*1000); % convert from seconds to ms
-  vmax = amp*2*pi/(period*1e-3);
-  accmax = amp*(2*pi/(period*1e-3)).^2;
-
-  amp = amp./2;
+  if isempty(VCS.period) || isempty(VCS.range)
+    error('Need valid range and period for Move_Sin!');
+  end
+  period = VCS.period*1000; % convert from seconds to ms
+  amp = VCS.range./2;
     % amp is half the movement range, see this picture:
     % https://www.zaber.com/wiki/File:Command_example_vector.png
     % i.e. we need to half the value we send if we want an overall oscilation of
     % 1 mm we have to request a 0.5 mm oscilation
 
   amp = VCS.MM_To_Steps(amp);
+    % convert from mm to steps are required by stage
 
-  % create asci message
-  if nargin == 3 % move indefinately
+  if (VCS.nPeriods)  % move n-times
+    message = Zaber.AsciiMessage(...
+        VCS.Dev.DeviceNo, 'move sin', [amp period VCS.nPeriods], 'AxisNo', VCS.Dev.AxisNo);
+    VCS.VPrintF('[VCS] Starting %i sine movements with\n',VCS.nPeriods);
+  else % move indefinately
     message = Zaber.AsciiMessage(...
         VCS.Dev.DeviceNo, 'move sin', [amp period], 'AxisNo', VCS.Dev.AxisNo);
     VCS.VPrintF('[VCS] Starting sine movement with\n');
-  elseif nargin == 4  % move n-times
-    message = Zaber.AsciiMessage(...
-        VCS.Dev.DeviceNo, 'move sin', [amp period nMove], 'AxisNo', VCS.Dev.AxisNo);
-    VCS.VPrintF('[VCS] Starting %i sine movements with\n',nMove);
   end
 
-  VCS.VPrintF('      max. velocity = %3.1f mm/s\n',vmax);
-  VCS.VPrintF('      max. accel.   = %3.0f mm2/s\n',accmax);
+  VCS.VPrintF('      max. velocity = %3.1f mm/s\n',VCS.vMax);
+  VCS.VPrintF('      max. accel.   = %3.0f mm2/s\n',VCS.accMax);
 
   % send message
   reply = VCS.Dev.Protocol.request(message);
