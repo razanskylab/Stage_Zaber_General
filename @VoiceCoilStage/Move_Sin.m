@@ -9,10 +9,9 @@
 
 function Move_Sin(VCS)
   tic;
-  if isempty(VCS.period) || isempty(VCS.range)
+  if (VCS.bScanRate==0) || (VCS.range==0)
     error('Need valid range and period for Move_Sin!');
   end
-  period = VCS.period*1000; % convert from seconds to ms
   amp = VCS.range./2;
     % amp is half the movement range, see this picture:
     % https://www.zaber.com/wiki/File:Command_example_vector.png
@@ -24,11 +23,11 @@ function Move_Sin(VCS)
 
   if (VCS.nPeriods)  % move n-times
     message = Zaber.AsciiMessage(...
-        VCS.Dev.DeviceNo, 'move sin', [amp period VCS.nPeriods], 'AxisNo', VCS.Dev.AxisNo);
+        VCS.Dev.DeviceNo, 'move sin', [amp VCS.period VCS.nPeriods], 'AxisNo', VCS.Dev.AxisNo);
     VCS.VPrintF('[VCS] Starting %i sine movements with\n',VCS.nPeriods);
   else % move indefinately
     message = Zaber.AsciiMessage(...
-        VCS.Dev.DeviceNo, 'move sin', [amp period], 'AxisNo', VCS.Dev.AxisNo);
+        VCS.Dev.DeviceNo, 'move sin', [amp VCS.period], 'AxisNo', VCS.Dev.AxisNo);
     VCS.VPrintF('[VCS] Starting sine movement with\n');
   end
 

@@ -22,7 +22,7 @@ classdef VoiceCoilStage < BaseHardwareClass
     % maxVel; % current max speead
     isConnected;
     period(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
-      % [s] - period of full b-scan movement
+      % [ms] - period of full b-scan movement
     nPeriods(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % number of full movement periods
     moveTime(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
@@ -78,11 +78,15 @@ classdef VoiceCoilStage < BaseHardwareClass
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods
     % constructor, called when class is created
-    function VCS = VoiceCoilStage()
-      if VCS.DO_AUTO_CONNECT && ~VCS.isConnected
+    function VCS = VoiceCoilStage(doConnect)
+      if nargin < 1
+        doConnect = VCS.DO_AUTO_CONNECT;
+      end
+
+      if doConnect && ~VCS.isConnected
         VCS.Connect;
-      elseif ~VCS.DO_AUTO_CONNECT
-        VCS.VPrintF('[VCS] Voice coil stage not connected yet!');
+      elseif ~VCS.isConnected
+        VCS.VPrintF('[VCS] Initialized but not connected yet.\n');
       end
     end
 
@@ -144,6 +148,7 @@ classdef VoiceCoilStage < BaseHardwareClass
     % simple dependend variables -----------------------------------------------
     function [period] = get.period(VCS)
       period = 1./(VCS.bScanRate)*2;
+      period = round(period*1000); % we need a ms, integer period
     end
 
     function [nPeriods] = get.nPeriods(VCS)
@@ -151,15 +156,15 @@ classdef VoiceCoilStage < BaseHardwareClass
     end
 
     function [moveTime] = get.moveTime(VCS)
-      moveTime = VCS.nPeriods*VCS.period;
+      moveTime = VCS.nPeriods*VCS.period*1e-3;
     end
 
     function [vMax] = get.vMax(VCS)
-      vMax = VCS.range*2*pi/(VCS.period);
+      vMax = VCS.range*2*pi/(VCS.period*1e-3);
     end
 
     function [accMax] = get.accMax(VCS)
-      accMax = VCS.range*(2*pi/(VCS.period)).^2;
+      accMax = VCS.range*(2*pi/(VCS.period*1e-3)).^2;
     end
 
     % --------------------------------------------------------------------------
