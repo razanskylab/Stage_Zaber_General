@@ -15,6 +15,8 @@ classdef VoiceCoilStage < BaseHardwareClass
     nBScans(1,1) {mustBeInteger,mustBeNonnegative,mustBeFinite} = 0;
     range(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % [mm] range of full motion during sin_mov
+    addedMass(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.1; % [Kg]
+      % see accMaxTheo
   end
 
   % depended properties are calculated from other properties
@@ -31,6 +33,9 @@ classdef VoiceCoilStage < BaseHardwareClass
       % [mm/s] max speed reached during sin-move
     accMax(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % [mm²/s] max accel reached during sin-move
+    accMaxTheo(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm²/s] maximum theoretical acceleration for given mass
+      % see BASE_MASS and addedMass constants
   end
 
   % things we don't want to accidently change but that still might be interesting
@@ -41,9 +46,14 @@ classdef VoiceCoilStage < BaseHardwareClass
 
   % things we don't want to accidently change but that still might be interesting
   properties (Constant)
-
-    % serial properties
     SERIAL_PORT = 'COM5';
+    STEP_SIZE = 0.2*1e-3; % [mm] one microstep = 0.2 micron
+    RANGE = [0 12]; % [mm] min / max travel range
+    MAX_SPEED = 1500; % [mm/s] max speed limit = maxspeed setting of 12288000
+  end
+
+  properties (Constant, Hidden = true)
+    % serial properties
     DEVICE_ADDRESS = 1;
     BAUD_RATE = 115200;
     DATA_BITS = 8;
@@ -51,11 +61,6 @@ classdef VoiceCoilStage < BaseHardwareClass
     PARITY = 'none';
     STOP_BITS = 1;
     TERMINATOR = 'CR/LF';
-
-    STEP_SIZE = 0.2*1e-3; % [mm] one microstep = 0.2 micron
-    RANGE = [0 12]; % [mm] min / max travel range
-
-    MAX_SPEED = 1500; % [mm/s] max speed limit = maxspeed setting of 12288000
 
     DO_AUTO_CONNECT = true; % connect when object is initialized?
 
@@ -65,7 +70,6 @@ classdef VoiceCoilStage < BaseHardwareClass
     % physical stage properties
     MAX_FORCE = 12; % [N] absolute max is a bit higher, but this is recommended
     BASE_MASS = 0.1; % [kg] mass of moving part of the stage when empty
-    ADDED_MASS = 0.1; % [kg] measured ~60g, without fiber, probably around this
   end
 
   % same as constant but now showing up as property
@@ -160,11 +164,16 @@ classdef VoiceCoilStage < BaseHardwareClass
     end
 
     function [vMax] = get.vMax(VCS)
-      vMax = VCS.range*2*pi/(VCS.period*1e-3);
+      vMax = VCS.range*pi/(VCS.period*1e-3);
     end
 
     function [accMax] = get.accMax(VCS)
-      accMax = VCS.range*(2*pi/(VCS.period*1e-3)).^2;
+      accMax = VCS.range./2*(2*pi/(VCS.period*1e-3)).^2;
+    end
+
+    function [accMaxTheo] = get.accMaxTheo(VCS)
+      totalMass = VCS.BASE_MASS + VCS.addedMass; % [Kg]
+      accMaxTheo = VCS.MAX_FORCE./totalMass*1e3; % [mm/s²]
     end
 
     % --------------------------------------------------------------------------
