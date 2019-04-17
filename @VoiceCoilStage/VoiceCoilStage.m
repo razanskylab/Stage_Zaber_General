@@ -3,12 +3,16 @@
 
 classdef VoiceCoilStage < BaseHardwareClass
 
-  properties
+  % Transient = true -> don't store these values, as these are read from the stage...
+  properties (Transient = true)
     pos(1,1) {mustBeNumeric,mustBeFinite}; % [mm]
     vel(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % [mm/s] not used in sine movement!!
-    acc(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
-      % [mm²/s] not used in sine movement!!
+    % acc(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm²/s] not used at all???
+  end
+
+  properties
     bScanRate(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % [Hz] - B-scans per second for sin-move
       % this is the basis from which period, max-speed, etc. are calculated
@@ -39,7 +43,7 @@ classdef VoiceCoilStage < BaseHardwareClass
   end
 
   % things we don't want to accidently change but that still might be interesting
-  properties (SetAccess = private)
+  properties (SetAccess = private,Transient = true)
     Dev; % zaber AsciiDevice, this is the zaber class used for all communication
     Serial; % serial port object, created in Connect, used by Dev
   end
@@ -198,44 +202,60 @@ classdef VoiceCoilStage < BaseHardwareClass
 
     % --------------------------------------------------------------------------
     function set.pos(VCS, pos)
-      if pos > max(VCS.RANGE) || pos < min(VCS.RANGE)
-        short_warn('Requested position out of range!');
-      else
-        pos = VCS.MM_To_Steps(pos); % convert to steps
-        reply = VCS.Dev.moveabsolute(pos);
-        VCS.Wait_Ready();
-        if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-          short_warn(reply.DataString);
+      if VCS.isConnected
+        if pos > max(VCS.RANGE) || pos < min(VCS.RANGE)
+          short_warn('Requested position out of range!');
+        else
+          pos = VCS.MM_To_Steps(pos); % convert to steps
+          reply = VCS.Dev.moveabsolute(pos);
+          VCS.Wait_Ready();
+          if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
+            short_warn(reply.DataString);
+          end
         end
+      else
+        short_warn('Not connected to stage!');
       end
     end
 
     function [pos] = get.pos(VCS)
-      pos = VCS.Dev.get('pos');
-      pos = VCS.Steps_To_MM(pos); % convert to steps
+      if VCS.isConnected
+        pos = VCS.Dev.get('pos');
+        pos = VCS.Steps_To_MM(pos); % convert to steps
+      else
+        pos = [];
+      end
     end
 
     % --------------------------------------------------------------------------
     function set.vel(VCS, vel)
-      % really sets the maximum allowed speed
-      % NOTE does NOT apply for sin move...only for abs/rel move!
-      if vel > max(VCS.MAX_SPEED)
-        short_warn('Requested velocity out of range!');
-      else
-        vel = VCS.MM_To_Steps(vel); % convert to steps
-        vel = vel*1.6384; % zaber stage has this weird conversion factor,
-          % it's not explained why, we just accept it...
-        if ~VCS.Dev.set('maxspeed', vel);
-          error('error')
+      if VCS.isConnected
+        % really sets the maximum allowed speed
+        % NOTE does NOT apply for sin move...only for abs/rel move!
+        if vel > max(VCS.MAX_SPEED)
+          short_warn('Requested velocity out of range!');
+        else
+          vel = VCS.MM_To_Steps(vel); % convert to steps
+          vel = vel*1.6384; % zaber stage has this weird conversion factor,
+            % it's not explained why, we just accept it...
+          if ~VCS.Dev.set('maxspeed', vel);
+            error('error')
+          end
         end
+      else
+        short_warn('Not connected to stage!');
       end
     end
 
     function [vel] = get.vel(VCS)
-      vel = VCS.Dev.get('maxspeed');
-      vel = VCS.Steps_To_MM(vel); % convert to steps
-      vel = vel./1.6384; % zaber stage has this weird conversion factor,
-        % it's not explained why, we just accept it...
+      if VCS.isConnected
+        vel = VCS.Dev.get('maxspeed');
+        vel = VCS.Steps_To_MM(vel); % convert to steps
+        vel = vel./1.6384; % zaber stage has this weird conversion factor,
+          % it's not explained why, we just accept it...
+      else
+        vel = [];
+      end
     end
 
     % --------------------------------------------------------------------------
