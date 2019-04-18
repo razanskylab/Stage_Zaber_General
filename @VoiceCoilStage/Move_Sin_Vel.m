@@ -4,7 +4,7 @@
 
 function Move_Sin_Vel(VCS,amp,velocity,nMove)
   period = amp*2*pi/velocity; % amp and vel in mm -> period im s
-  if nargin == 4
+  if (nargin == 4)
     VCS.Move_Sin(amp,period,nMove);
   else nargin == 3
     VCS.Move_Sin(amp,period);

@@ -21,6 +21,10 @@ classdef VoiceCoilStage < BaseHardwareClass
       % [mm] range of full motion during sin_mov
     addedMass(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.1; % [Kg]
       % see accMaxTheo
+    sinOvershoot(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.5; % [mm]
+      % add this to the desired scan range when using position based triggering
+      % i.e. when going to 10 mm, we actually aim for 10.5 mm to make sure
+      % we def. reach our 10 mm target
   end
 
   % depended properties are calculated from other properties
