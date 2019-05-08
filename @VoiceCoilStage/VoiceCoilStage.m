@@ -71,6 +71,7 @@ classdef VoiceCoilStage < BaseHardwareClass
     TERMINATOR = 'CR/LF';
 
     DO_AUTO_CONNECT = true; % connect when object is initialized?
+    DEFAULT_VEL = 50;
 
     POLLING_INTERVAL = 10;
       % ms, time to wait between polling device stage whilte waiting to finish move...
@@ -97,6 +98,7 @@ classdef VoiceCoilStage < BaseHardwareClass
 
       if doConnect && ~VCS.isConnected
         VCS.Connect;
+        VCS.vel = VCS.DEFAULT_VEL;
       elseif ~VCS.isConnected
         VCS.VPrintF('[VCS] Initialized but not connected yet.\n');
       end
@@ -105,6 +107,7 @@ classdef VoiceCoilStage < BaseHardwareClass
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function delete(VCS)
       if ~isempty(VCS.Serial) && strcmp(VCS.Serial.Status,'open')
+        VCS.Force_Off(); % make sure no constant force is applied to stage
         VCS.Dev.stop();
         VCS.Close();
       end
@@ -144,6 +147,13 @@ classdef VoiceCoilStage < BaseHardwareClass
 
     function [] = Stop_Sin(VCS)
       reply = VCS.Dev.request('move sin stop', []);
+      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
+        short_warn(reply.DataString);
+      end
+    end
+
+    function [] = Force_Off(VCS)
+      reply = VCS.Dev.request('force off', []);
       if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
         short_warn(reply.DataString);
       end
