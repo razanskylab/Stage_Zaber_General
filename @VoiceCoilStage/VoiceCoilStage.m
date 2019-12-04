@@ -21,7 +21,7 @@ classdef VoiceCoilStage < BaseHardwareClass
       % [mm] range of full motion during sin_mov
     addedMass(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.1; % [Kg]
       % see accMaxTheo
-    sinOvershoot(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.5; % [mm]
+    sinOvershoot(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.25; % [mm]
       % add this to the desired scan range when using position based triggering
       % i.e. when going to 10 mm, we actually aim for 10.5 mm to make sure
       % we def. reach our 10 mm target
@@ -108,7 +108,7 @@ classdef VoiceCoilStage < BaseHardwareClass
     function delete(VCS)
       if ~isempty(VCS.Serial) && strcmp(VCS.Serial.Status,'open')
         VCS.Force_Off(); % make sure no constant force is applied to stage
-        VCS.Dev.stop();
+        % VCS.Dev.stop(); % don't use, at it applies constant force
         VCS.Close();
       end
     end
@@ -206,7 +206,7 @@ classdef VoiceCoilStage < BaseHardwareClass
 
     % --------------------------------------------------------------------------
     function set.range(VCS, range)
-      if range + VCS.pos > max(VCS.RANGE) || range < min(VCS.RANGE)
+      if (VCS.pos + range/2) > max(VCS.RANGE) || (VCS.pos - range/2) < min(VCS.RANGE)
         short_warn('Requested sin_move range out of stage range!');
       else
         VCS.range = range; % convert to steps

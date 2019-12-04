@@ -31,8 +31,8 @@ function Move_Sin(VCS)
     VCS.VPrintF('[VCS] Starting sine movement with\n');
   end
 
-  VCS.VPrintF('      max. velocity = %3.1f mm/s\n',VCS.vMax);
-  VCS.VPrintF('      max. accel.   = %3.0f mm2/s\n',VCS.accMax);
+  VCS.VPrintF('   max. velocity = %.1f mm/s\n',VCS.vMax);
+  VCS.VPrintF('   max. accel.   = %.2f m2/s\n',VCS.accMax*1e-3);
 
   % send message
   reply = VCS.Dev.Protocol.request(message);

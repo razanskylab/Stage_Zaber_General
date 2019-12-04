@@ -4,7 +4,7 @@
 
 function [] = Home(VCS)
   tic;
-  VCS.VPrintF('[VCS] Homing stage...');
+  VCS.PrintF('[VCS] Homing stage...');
   VCS.Dev.home();
   VCS.Wait_Ready();
   VCS.Done();
