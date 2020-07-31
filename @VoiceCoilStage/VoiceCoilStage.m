@@ -10,6 +10,7 @@ classdef VoiceCoilStage < BaseHardwareClass
       % [mm/s] not used in sine movement!!
     % acc(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % [mm²/s] not used at all???
+    SERIAL_PORT = 'COM5';
   end
 
   properties
@@ -54,7 +55,6 @@ classdef VoiceCoilStage < BaseHardwareClass
 
   % things we don't want to accidently change but that still might be interesting
   properties (Constant)
-    SERIAL_PORT = 'COM5';
     STEP_SIZE = 0.2*1e-3; % [mm] one microstep = 0.2 micron
     RANGE = [0 12]; % [mm] min / max travel range
     MAX_SPEED = 1500; % [mm/s] max speed limit = maxspeed setting of 12288000
@@ -91,16 +91,21 @@ classdef VoiceCoilStage < BaseHardwareClass
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods
     % constructor, called when class is created
-    function VCS = VoiceCoilStage(doConnect)
+    function OBJ = VoiceCoilStage(doConnect)
       if nargin < 1
-        doConnect = VCS.DO_AUTO_CONNECT;
+        doConnect = OBJ.DO_AUTO_CONNECT;
       end
 
-      if doConnect && ~VCS.isConnected
-        VCS.Connect;
-        VCS.vel = VCS.DEFAULT_VEL;
-      elseif ~VCS.isConnected
-        VCS.VPrintF('[VCS] Initialized but not connected yet.\n');
+      if nargin == 1 && ischar(doConnect)
+        OBJ.SERIAL_PORT = doConnect;
+        doConnect = true;
+      end
+
+      if doConnect && ~OBJ.isConnected
+        OBJ.Connect;
+        OBJ.vel = OBJ.DEFAULT_VEL;
+      elseif ~OBJ.isConnected
+        OBJ.VPrintF('[VCS] Initialized but not connected yet.\n');
       end
     end
 
