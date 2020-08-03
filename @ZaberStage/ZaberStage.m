@@ -131,20 +131,6 @@ classdef ZaberStage < BaseHardwareClass
       end
     end
 
-    function [] = Stop_Sin(Obj)
-      reply = Obj.Dev.request('move sin stop', []);
-      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-        short_warn(reply.DataString);
-      end
-    end
-
-    function [] = Force_Off(Obj)
-      reply = Obj.Dev.request('force off', []);
-      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-        short_warn(reply.DataString);
-      end
-    end
-
   end
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -161,9 +147,8 @@ classdef ZaberStage < BaseHardwareClass
     % --------------------------------------------------------------------------
     function set.pos(Obj, pos)
       if Obj.isConnected
-        if pos > max(Obj.RANGE) || pos < min(Obj.RANGE)
-          short_warn('Requested position out of range!');
-        else
+        isValidPos = Obj.Check_Valid_Pos(pos);
+        if isValidPos
           pos = Obj.MM_To_Steps(pos); % convert to steps
           reply = Obj.Dev.moveabsolute(pos);
           Obj.Wait_Ready();

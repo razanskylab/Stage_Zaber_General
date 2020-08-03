@@ -1,5 +1,5 @@
 function [] = Close(Obj)
-  Obj.VPrintF('[Obj] Closing connection to stage...');
+  Obj.VPrintF_With_ID('Closing connection to stage...');
 
   if ~isempty(Obj.Serial) && strcmp(Obj.Serial.Status,'open')
     fclose(Obj.Serial);

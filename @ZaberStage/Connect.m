@@ -4,10 +4,10 @@
 
 function [] = Connect(Obj)
   if ~isempty(Obj.Serial) && strcmp(Obj.Serial.Status,'open')
-    Obj.VPrintF('[Obj] Stage already connected!\n');
+    Obj.VPrintF_With_ID('Stage already connected!\n');
   else
     tic;
-    Obj.VPrintF('[Obj] Connecting to stage...');
+    Obj.VPrintF_With_ID('Connecting to stage...');
 
     Serial = serial(Obj.serialPort);
     Serial.BaudRate = Obj.BAUD_RATE;
@@ -29,12 +29,12 @@ function [] = Connect(Obj)
 
     % Init device, using ASCII Protocol
     tic;
-    Obj.VPrintF('[Obj] Initialize device & protocol...');
+    Obj.VPrintF_With_ID('Initialize device & protocol...');
     Protocol = Zaber.AsciiProtocol(Serial);
     Obj.Dev = Zaber.AsciiDevice.initialize(Protocol, Obj.axisId);
     Obj.Done();
 
-    Obj.VPrintF('[Obj] Found stage %s (firmware version %2.3f)\n', ...
+    Obj.VPrintF_With_ID('Found %s (firmware version %2.3f)\n', ...
       Obj.Dev.Name, Obj.Dev.FirmwareVersion);
   end
 end

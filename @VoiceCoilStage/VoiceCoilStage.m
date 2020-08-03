@@ -16,7 +16,7 @@ classdef VoiceCoilStage < ZaberStage
       % [Hz] - B-scans per second for sin-move
       % this is the basis from which period, max-speed, etc. are calculated
     nBScans(1,1) {mustBeInteger,mustBeNonnegative,mustBeFinite} = 0;
-    range(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+    sinRange(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % [mm] range of full motion during sin_mov
     sinOvershoot(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.25; % [mm]
       % add this to the desired scan range when using position based triggering
@@ -70,28 +70,6 @@ classdef VoiceCoilStage < ZaberStage
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods % short methods, which are not worth putting in a file
-    function [mm] = Steps_To_MM(Obj,steps)
-      mm = steps.*Obj.STEP_SIZE;
-    end
-
-    function [steps] = MM_To_Steps(Obj,mm)
-      steps = round(mm./Obj.STEP_SIZE); % max rounding error is 200 nm...
-    end
-
-    function [] = Wait_Ready(Obj)
-      reply = Obj.Dev.waitforidle(Obj.POLLING_INTERVAL*1e-3);
-      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-        short_warn(reply.DataString);
-      end
-    end
-
-    function [] = Stop(Obj)
-      reply = Obj.Dev.stop();
-      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-        short_warn(reply.DataString);
-      end
-    end
-
     function [] = Stop_Sin(Obj)
       reply = Obj.Dev.request('move sin stop', []);
       if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
@@ -138,11 +116,11 @@ classdef VoiceCoilStage < ZaberStage
     end
 
     % --------------------------------------------------------------------------
-    function set.range(Obj, range)
-      if (Obj.pos + range/2) > max(Obj.RANGE) || (Obj.pos - range/2) < min(Obj.RANGE)
+    function set.sinRange(Obj, sinRange)
+      if (Obj.pos + sinRange/2) > max(Obj.RANGE) || (Obj.pos - sinRange/2) < min(Obj.RANGE)
         short_warn('Requested sin_move range out of stage range!');
       else
-        Obj.range = range; % convert to steps
+        Obj.sinRange = sinRange;
       end
     end
 
