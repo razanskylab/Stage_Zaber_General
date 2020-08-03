@@ -7,12 +7,15 @@ classdef ZaberStage < BaseHardwareClass
   % Transient = true -> don't store these values, as these are read from the stage...
   properties (Abstract = true)
     serialPort char;
+    % zaber defines devices via an address (1-99)
+    address(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} 
+    % devices can have multiple axis, default is 1 with axisId = 1
     axisId(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
   end
   
   properties (Transient = true)
     pos(1,1) {mustBeNumeric,mustBeFinite}; % [mm]
-    vel(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+    vel(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite}; % [mm/s]
   end
 
   properties
@@ -30,15 +33,17 @@ classdef ZaberStage < BaseHardwareClass
 
   % things we don't want to accidently change but that still might be interesting
   properties (SetAccess = private,Transient = true)
-    Dev; % zaber AsciiDevice, this is the zaber class used for all communication
     Serial; % serial port object, created in Connect, used by Dev
+    % Zaber motion libary uses both device and axis objects for control
+    Dev;
+    Axis;
   end
 
   % things we don't want to accidently change but that still might be interesting
   properties (Abstract = true, Constant)
     STEP_SIZE; % [mm] one microstep = 0.2 micron
     RANGE; % [mm] min / max travel range
-    MAX_SPEED; % [mm/s] max speed limit = maxspeed setting of 12288000
+    MAX_SPEED; % [mm/s] max speed limit
     DEFAULT_VEL;
   end
 
@@ -49,13 +54,6 @@ classdef ZaberStage < BaseHardwareClass
   end
 
   properties (Constant, Hidden = true)
-    BAUD_RATE = 115200;
-    DATA_BITS = 8;
-    FLOW_CONTROL = 'none';
-    PARITY = 'none';
-    STOP_BITS = 1;
-    TERMINATOR = 'CR/LF';
-
     DO_AUTO_CONNECT = true; % connect when object is initialized?
 
     POLLING_INTERVAL = 10;
@@ -73,6 +71,15 @@ classdef ZaberStage < BaseHardwareClass
   methods
     % constructor, called when class is created
     function Obj = ZaberStage(doConnect)
+      % check for installer zaber toolbox
+      instAddOn = matlab.addons.installedAddons;
+      toolboxInstalled = any(strcmp(instAddOn.Name,"Zaber Motion Library"));
+      if ~toolboxInstalled
+        web('https://www.zaber.com/software/docs/motion-library/ascii/tutorials/introduction/'); 
+        error('Zaber Motion Library not found, please download!');
+      end
+
+
       if nargin < 1
         doConnect = Obj.DO_AUTO_CONNECT;
       end
@@ -86,13 +93,13 @@ classdef ZaberStage < BaseHardwareClass
         Obj.Connect;
         Obj.vel = Obj.DEFAULT_VEL;
       elseif ~Obj.isConnected
-        Obj.VPrintF('[Obj] Initialized but not connected yet.\n');
+        Obj.VPrintF_With_ID('Initialized but not connected yet.\n');
       end
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function delete(Obj)
-      if ~isempty(Obj.Serial) && strcmp(Obj.Serial.Status,'open')
+      if ~isempty(Obj.Serial)
         Obj.Force_Off(); % make sure no constant force is applied to stage
         % Obj.Dev.stop(); % don't use, at it applies constant force
         Obj.Close();
@@ -146,15 +153,12 @@ classdef ZaberStage < BaseHardwareClass
 
     % --------------------------------------------------------------------------
     function set.pos(Obj, pos)
+      import zaber.motion.Units;
+
       if Obj.isConnected
         isValidPos = Obj.Check_Valid_Pos(pos);
         if isValidPos
-          pos = Obj.MM_To_Steps(pos); % convert to steps
-          reply = Obj.Dev.moveabsolute(pos);
-          Obj.Wait_Ready();
-          if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-            short_warn(reply.DataString);
-          end
+          Obj.Axis.moveAbsolute(pos, Units.LENGTH_MILLIMETRES,true);
         end
       else
         short_warn('Not connected to stage!');
@@ -162,9 +166,9 @@ classdef ZaberStage < BaseHardwareClass
     end
 
     function [pos] = get.pos(Obj)
+      import zaber.motion.Units;
       if Obj.isConnected
-        pos = Obj.Dev.get('pos');
-        pos = Obj.Steps_To_MM(pos); % convert to steps
+        pos = Obj.Axis.getSettings().get('pos', Units.LENGTH_MILLIMETRES);
       else
         pos = [];
       end
@@ -172,18 +176,15 @@ classdef ZaberStage < BaseHardwareClass
 
     % --------------------------------------------------------------------------
     function set.vel(Obj, vel)
+      import zaber.motion.Units;
       if Obj.isConnected
-        % really sets the maximum allowed speed
-        % NOTE does NOT apply for sin move...only for abs/rel move!
+
+        % sets the maximum allowed speed
         if vel > max(Obj.MAX_SPEED)
           short_warn('Requested velocity out of range!');
         else
-          vel = Obj.MM_To_Steps(vel); % convert to steps
-          vel = vel*1.6384; % zaber stage has this weird conversion factor,
-            % it's not explained why, we just accept it...
-          if ~Obj.Dev.set('maxspeed', vel);
-            error('error')
-          end
+          Obj.Axis.getSettings().set(...
+            'maxspeed', vel, Units.VELOCITY_MILLIMETRES_PER_SECOND);
         end
       else
         short_warn('Not connected to stage!');
@@ -191,11 +192,9 @@ classdef ZaberStage < BaseHardwareClass
     end
 
     function [vel] = get.vel(Obj)
+      import zaber.motion.Units;
       if Obj.isConnected
-        vel = Obj.Dev.get('maxspeed');
-        vel = Obj.Steps_To_MM(vel); % convert to steps
-        vel = vel./1.6384; % zaber stage has this weird conversion factor,
-          % it's not explained why, we just accept it...
+        vel = Obj.Axis.getSettings().get('maxspeed', Units.VELOCITY_MILLIMETRES_PER_SECOND);
       else
         vel = [];
       end
@@ -203,7 +202,7 @@ classdef ZaberStage < BaseHardwareClass
 
     % --------------------------------------------------------------------------
     function [isConnected] = get.isConnected(Obj)
-      isConnected = ~isempty(Obj.Serial) && strcmp(Obj.Serial.Status,'open');
+      isConnected = ~isempty(Obj.Serial);
     end
 
   end % <<<<<<<< END SET?GET METHODS

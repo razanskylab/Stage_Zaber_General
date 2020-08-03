@@ -6,7 +6,8 @@ classdef VoiceCoilStage < ZaberStage
   % Transient = true -> don't store these values, as these are read from the stage...
   properties (Transient = true)
     serialPort char = 'COM3';
-    axisId = 1;
+    axisId = 1; % voice coil stage only has one axis
+    address = 1; % can be changed via zaber console, but should not be!
   end
 
   properties
@@ -78,10 +79,11 @@ classdef VoiceCoilStage < ZaberStage
     end
 
     function [] = Force_Off(Obj)
-      reply = Obj.Dev.request('force off', []);
-      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-        short_warn(reply.DataString);
-      end
+      % reply = Obj.Dev.request('force off', []);
+      % if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
+      %   short_warn(reply.DataString);
+      % end
+      short_warn('Need to implement Force_Off with new libary!')
     end
 
   end
