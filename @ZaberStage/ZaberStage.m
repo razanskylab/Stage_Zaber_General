@@ -29,14 +29,19 @@ classdef ZaberStage < BaseHardwareClass
     accMaxTheo(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % [mm²/s] maximum theoretical acceleration for given mass
       % see BASE_MASS and addedMass constants
+    temperature; % read from stage controller
+    warningFlags; % read warning flags
   end
 
   % things we don't want to accidently change but that still might be interesting
   properties (SetAccess = private,Transient = true)
     Serial; % serial port object, created in Connect, used by Dev
-    % Zaber motion libary uses both device and axis objects for control
-    Dev;
-    Axis;
+    % www.zaber.com/software/docs/motion-library/ascii/references/matlab/
+    DeviceList; % Array of detected devices
+    Dev; % selected device, i.e. stage
+    Axis; % control of single axis
+    Warnings; % read & clear warnings
+    Identity; % device identification
   end
 
   % things we don't want to accidently change but that still might be interesting
@@ -55,7 +60,6 @@ classdef ZaberStage < BaseHardwareClass
 
   properties (Constant, Hidden = true)
     DO_AUTO_CONNECT = true; % connect when object is initialized?
-
     POLLING_INTERVAL = 10;
       % ms, time to wait between polling device stage whilte waiting to finish move...
   end
@@ -70,7 +74,7 @@ classdef ZaberStage < BaseHardwareClass
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods
     % constructor, called when class is created
-    function Obj = ZaberStage(doConnect)
+    function Obj = ZaberStage(varargin)
       % check for installer zaber toolbox
       instAddOn = matlab.addons.installedAddons;
       toolboxInstalled = any(strcmp(instAddOn.Name,"Zaber Motion Library"));
@@ -79,28 +83,45 @@ classdef ZaberStage < BaseHardwareClass
         error('Zaber Motion Library not found, please download!');
       end
 
-
       if nargin < 1
         doConnect = Obj.DO_AUTO_CONNECT;
+        Obj.Serial = [];
       end
 
-      if nargin == 1 && ischar(doConnect)
-        Obj.SERIAL_PORT = doConnect;
-        doConnect = true;
+      % className = class(Obj);
+      if nargin
+        inputArg = varargin{1};
+        hasSerial = isprop(inputArg,'Serial');
+        hasDevices = isprop(inputArg,'DeviceList');
+        % if isa(inputArg,className) % input is zaber stage class
+        if islogical(inputArg) % input is zaber stage class
+          doConnect = inputArg;
+          Obj.Serial = [];
+        elseif hasSerial && hasDevices
+          doConnect = false; % serial connection is already open
+          Obj.Serial = inputArg.Serial;
+          Obj.DeviceList = inputArg.DeviceList;
+        else
+          short_warn('This should not happen...');
+          doConnect = false;
+        end 
       end
 
       if doConnect && ~Obj.isConnected
-        Obj.Connect;
-        Obj.vel = Obj.DEFAULT_VEL;
+        Obj.Connect_Serial();
+        Obj.Connect_Device();
+      elseif hasSerial && hasDevices % only connect to device using existing serial port
+        Obj.Connect_Device();
       elseif ~Obj.isConnected
         Obj.VPrintF_With_ID('Initialized but not connected yet.\n');
       end
+      Obj.vel = Obj.DEFAULT_VEL;
     end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     function delete(Obj)
       if ~isempty(Obj.Serial)
-        Obj.Force_Off(); % make sure no constant force is applied to stage
+        % Obj.Force_Off(); % make sure no constant force is applied to stage
         % Obj.Dev.stop(); % don't use, at it applies constant force
         Obj.Close();
       end
@@ -116,6 +137,31 @@ classdef ZaberStage < BaseHardwareClass
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods % short methods, which are not worth putting in a file
+    function Home_All_Devices(Obj)
+      tic;
+      Obj.VPrintF('Homing all Zaber stages...');
+      
+      nDevices = Obj.DeviceList.length;
+      for iDev = 1:nDevices
+        % send home, don't wait for stages
+        device = Obj.DeviceList(iDev);
+        Obj.Serial.genericCommand('home', device.getDeviceAddress(), Obj.axisId);
+      end
+      Obj.Wait_Ready_All();
+      Obj.Done();
+    end
+
+    function [failed, response] = Send_Generic_Command(Obj,genCommand)
+      response = Obj.Serial.genericCommand(genCommand, Obj.address, Obj.axisId);
+      if ~strcmp(response.getReplyFlag(),'OK')
+        warnStr = sprintf('Command %s was rejected!',genCommand);
+        short_warn(warnStr);
+        failed = true;
+      else
+        failed = false;
+      end
+    end
+
     function [mm] = Steps_To_MM(Obj,steps)
       mm = steps.*Obj.STEP_SIZE;
     end
@@ -124,18 +170,34 @@ classdef ZaberStage < BaseHardwareClass
       steps = round(mm./Obj.STEP_SIZE); % max rounding error is 200 nm...
     end
 
+    function Set_Setting(Obj,settingString,value)
+      % settingString eg. 'system.led.enable'
+      Obj.Dev.getSettings().set(settingString, value);
+    end
+
+    function [value] = Get_Setting(Obj,settingString)
+      % settingString eg. 'system.led.enable'
+      value = Obj.Dev.getSettings().get(settingString);
+    end
+
     function [] = Wait_Ready(Obj)
-      reply = Obj.Dev.waitforidle(Obj.POLLING_INTERVAL*1e-3);
-      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-        short_warn(reply.DataString);
+      throwErrorOnFault = true;
+      Obj.Axis.waitUntilIdle(throwErrorOnFault);
+    end
+
+    function [] = Wait_Ready_All(Obj)
+      % wait for all stages to be ready
+      nDevices = Obj.DeviceList.length;
+      throwErrorOnFault = true;
+      for iDev = 1:nDevices
+        device = Obj.DeviceList(iDev);
+        deviceAxis = device.getAxis(1);
+        deviceAxis.waitUntilIdle(throwErrorOnFault);
       end
     end
 
     function [] = Stop(Obj)
-      reply = Obj.Dev.stop();
-      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-        short_warn(reply.DataString);
-      end
+      Obj.Axis.stop();
     end
 
   end
@@ -201,6 +263,24 @@ classdef ZaberStage < BaseHardwareClass
     end
 
     % --------------------------------------------------------------------------
+    function [temperature] = get.temperature(Obj)
+      if Obj.isConnected
+        temperature = Obj.Axis.getSettings().get('driver.temperature');
+      else
+        temperature = [];
+      end
+    end
+
+    % --------------------------------------------------------------------------
+    function [warningFlags] = get.warningFlags(Obj)
+      if Obj.isConnected
+        warningFlags = Obj.Warnings.getFlags();
+      else
+        warningFlags = [];
+      end
+    end
+
+    % --------------------------------------------------------------------------
     function [isConnected] = get.isConnected(Obj)
       isConnected = ~isempty(Obj.Serial);
     end
@@ -208,3 +288,4 @@ classdef ZaberStage < BaseHardwareClass
   end % <<<<<<<< END SET?GET METHODS
 
 end % <<<<<<<< END BASE CLASS
+

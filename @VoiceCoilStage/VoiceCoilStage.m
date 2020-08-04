@@ -58,8 +58,10 @@ classdef VoiceCoilStage < ZaberStage
     % end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % function delete(Obj)
-    % end
+    function delete(Obj)
+      Obj.Force_Off(); % make sure no constant force is applied to stage
+      Obj.Close();
+    end
 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % when saved, hand over only properties stored in saveObj
@@ -79,11 +81,11 @@ classdef VoiceCoilStage < ZaberStage
     end
 
     function [] = Force_Off(Obj)
-      % reply = Obj.Dev.request('force off', []);
-      % if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-      %   short_warn(reply.DataString);
-      % end
-      short_warn('Need to implement Force_Off with new libary!')
+      % disables driver for stage
+      [failed,~] = Obj.Send_Generic_Command('force off');
+      if failed
+        short_warn('Force off command failed!');
+      end
     end
 
   end
