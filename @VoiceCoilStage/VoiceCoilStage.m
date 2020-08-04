@@ -13,12 +13,13 @@ classdef VoiceCoilStage < ZaberStage
   properties
     classId char = '[X-Stage]';
 
-    bScanRate(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+    % properties below are specific for voice-coil stage and Move_Sin methods
+    bScanRate(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.5;
       % [Hz] - B-scans per second for sin-move
       % this is the basis from which period, max-speed, etc. are calculated
     nBScans(1,1) {mustBeInteger,mustBeNonnegative,mustBeFinite} = 0;
-    sinRange(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
-      % [mm] range of full motion during sin_mov
+    sinRange(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 1;
+      % [mm] range of full motion during sin_mov (2*amplitude)
     sinOvershoot(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite} = 0.25; % [mm]
       % add this to the desired scan range when using position based triggering
       % i.e. when going to 10 mm, we actually aim for 10.5 mm to make sure
@@ -28,11 +29,15 @@ classdef VoiceCoilStage < ZaberStage
   % depended properties are calculated from other properties
   properties (Dependent = true)
     period(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
-      % [ms] - period of full b-scan movement
+      % [ms] - period of full b-scan movement, 5s is safe default value
     nPeriods(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % number of full movement periods
     moveTime(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
       % [s] time to complete nBscans at desired Bscan rate
+    vMax(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm/s] max speed reached during sin-move
+    accMax(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite};
+      % [mm²/s] max accel reached during sin-move
   end
 
   % things we don't want to accidently change but that still might be interesting
@@ -74,10 +79,13 @@ classdef VoiceCoilStage < ZaberStage
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods % short methods, which are not worth putting in a file
     function [] = Stop_Sin(Obj)
-      reply = Obj.Dev.request('move sin stop', []);
-      if (isa(reply, 'Zaber.AsciiMessage') && reply.IsError)
-        short_warn(reply.DataString);
+      % reply = Obj.Dev.request('move sin stop', []);
+      [failed,reply] = Obj.Send_Generic_Command('move sin stop');
+      if failed
+        short_warn('Force off command failed!');
       end
+      Obj.wait
+
     end
 
     function [] = Force_Off(Obj)
@@ -109,6 +117,15 @@ classdef VoiceCoilStage < ZaberStage
     function [moveTime] = get.moveTime(Obj)
       moveTime = Obj.nPeriods*Obj.period*1e-3;
     end
+
+    function [vMax] = get.vMax(Obj)
+      vMax = Obj.sinRange*pi/(Obj.period*1e-3);
+    end
+
+    function [accMax] = get.accMax(Obj)
+      accMax = Obj.sinRange./2*(2*pi/(Obj.period*1e-3)).^2;
+    end
+
     % --------------------------------------------------------------------------
     function set.nBScans(Obj, nBScans)
       if mod(nBScans,2)

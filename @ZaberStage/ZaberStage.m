@@ -151,40 +151,35 @@ classdef ZaberStage < BaseHardwareClass
       Obj.Done();
     end
 
-    function [failed, response] = Send_Generic_Command(Obj,genCommand)
-      response = Obj.Serial.genericCommand(genCommand, Obj.address, Obj.axisId);
-      if ~strcmp(response.getReplyFlag(),'OK')
-        warnStr = sprintf('Command %s was rejected!',genCommand);
-        short_warn(warnStr);
-        failed = true;
-      else
-        failed = false;
-      end
-    end
-
+    % --------------------------------------------------------------------------
     function [mm] = Steps_To_MM(Obj,steps)
       mm = steps.*Obj.STEP_SIZE;
     end
 
+    % --------------------------------------------------------------------------
     function [steps] = MM_To_Steps(Obj,mm)
       steps = round(mm./Obj.STEP_SIZE); % max rounding error is 200 nm...
     end
 
+    % --------------------------------------------------------------------------
     function Set_Setting(Obj,settingString,value)
       % settingString eg. 'system.led.enable'
       Obj.Dev.getSettings().set(settingString, value);
     end
 
+    % --------------------------------------------------------------------------
     function [value] = Get_Setting(Obj,settingString)
       % settingString eg. 'system.led.enable'
       value = Obj.Dev.getSettings().get(settingString);
     end
 
+    % --------------------------------------------------------------------------
     function [] = Wait_Ready(Obj)
       throwErrorOnFault = true;
       Obj.Axis.waitUntilIdle(throwErrorOnFault);
     end
 
+    % --------------------------------------------------------------------------
     function [] = Wait_Ready_All(Obj)
       % wait for all stages to be ready
       nDevices = Obj.DeviceList.length;
