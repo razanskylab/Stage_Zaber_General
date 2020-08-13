@@ -84,8 +84,7 @@ classdef VoiceCoilStage < ZaberStage
       if failed
         short_warn('Force off command failed!');
       end
-      Obj.wait
-
+      Obj.Wait_Ready();
     end
 
     function [] = Force_Off(Obj)
@@ -138,8 +137,15 @@ classdef VoiceCoilStage < ZaberStage
 
     % --------------------------------------------------------------------------
     function set.sinRange(Obj, sinRange)
-      if (Obj.pos + sinRange/2) > max(Obj.RANGE) || (Obj.pos - sinRange/2) < min(Obj.RANGE)
-        short_warn('Requested sin_move range out of stage range!');
+      topEnd = Obj.pos + sinRange/2;
+      lowEnd = Obj.pos - sinRange/2;
+      if topEnd > max(Obj.RANGE) || lowEnd < min(Obj.RANGE)
+        % short_warn('Requested sin_move range out of stage range!');
+        warnStr = sprintf('%s Requested sinRange (%2.2f<->%2.2f mm) not possible!',...
+          Obj.classId,lowEnd,topEnd); 
+        short_warn(warnStr);
+        warnStr = sprintf('%s Allowed range: %2.2f<->%2.2f mm!',Obj.classId,minmax(Obj.RANGE)); 
+        short_warn(warnStr);
       else
         Obj.sinRange = sinRange;
       end
