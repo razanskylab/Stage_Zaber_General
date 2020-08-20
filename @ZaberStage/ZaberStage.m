@@ -16,6 +16,8 @@ classdef ZaberStage < BaseHardwareClass
   properties (Transient = true)
     pos(1,1) {mustBeNumeric,mustBeFinite}; % [mm]
     vel(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite}; % [mm/s]
+    % ! no set/get right now for acc
+    acc(1,1) {mustBeNumeric,mustBeNonnegative,mustBeFinite}; % [mm/s²], 
   end
 
   properties
