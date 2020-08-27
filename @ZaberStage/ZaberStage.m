@@ -90,9 +90,16 @@ classdef ZaberStage < BaseHardwareClass
         Obj.Serial = [];
       end
 
-      if (nargin == 2)
+      if (nargin >= 1)
         doConnect = varargin{1};
+      end
+
+      if (nargin >= 2)
         Obj.serialPort = varargin{2};
+      end
+      
+      if (nargin >= 3)
+        Obj.address = varargin{3};
       end
 
       % className = class(Obj);
