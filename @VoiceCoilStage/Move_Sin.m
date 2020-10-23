@@ -1,8 +1,8 @@
 %NOTE:
+% starts sine-movement from current position towards positive direction, with 
+% center of movement (of sine curve) at current pos + Obj.sinRange/2
 % vMax = a*2*pi/T
 % accmax = a*(2*pi/T)^2
-% movement starts at -amp, i.e. of pos = 0 movement will go to sinRange and then
-% back to 0
 % NOTE use the above to get the period based on desired / realistic max velocity
 % https://www.zaber.com/protocol-manual#topic_command_move_sin 
 
@@ -11,6 +11,20 @@ function Move_Sin(Obj)
   if (Obj.bScanRate==0) || (Obj.sinRange==0)
     error('Need valid range and period for Move_Sin!');
   end
+
+  % check if sinus movement range possible from current position
+  topEnd = Obj.pos + Obj.sinRange;
+  lowEnd = Obj.pos;
+  if topEnd > max(Obj.RANGE) || lowEnd < min(Obj.RANGE)
+    warnStr = sprintf('%s Requested sinRange (%2.2f<->%2.2f mm) not possible!',...
+      Obj.classId,lowEnd,topEnd); 
+    short_warn(warnStr);
+    warnStr = sprintf('%s Allowed range: %2.2f<->%2.2f mm!',Obj.classId,minmax(Obj.RANGE)); 
+    short_warn(warnStr);
+    short_warn('Move_Sin cancelled!');
+    return;
+  end
+
   amp = Obj.sinRange./2;
     % amp is half the movement range, see this picture:
     % https://www.zaber.com/wiki/File:Command_example_vector.png

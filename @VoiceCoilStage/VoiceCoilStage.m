@@ -137,18 +137,7 @@ classdef VoiceCoilStage < ZaberStage
 
     % --------------------------------------------------------------------------
     function set.sinRange(Obj, sinRange)
-      topEnd = Obj.pos + sinRange/2;
-      lowEnd = Obj.pos - sinRange/2;
-      if topEnd > max(Obj.RANGE) || lowEnd < min(Obj.RANGE)
-        % short_warn('Requested sin_move range out of stage range!');
-        warnStr = sprintf('%s Requested sinRange (%2.2f<->%2.2f mm) not possible!',...
-          Obj.classId,lowEnd,topEnd); 
-        short_warn(warnStr);
-        warnStr = sprintf('%s Allowed range: %2.2f<->%2.2f mm!',Obj.classId,minmax(Obj.RANGE)); 
-        short_warn(warnStr);
-      else
-        Obj.sinRange = sinRange;
-      end
+      Obj.sinRange = sinRange;
     end
 
   end % <<<<<<<< END SET/GET METHODS
