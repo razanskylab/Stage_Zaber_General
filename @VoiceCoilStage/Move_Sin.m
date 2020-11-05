@@ -37,10 +37,10 @@ function Move_Sin(Obj)
   % move sin amplitude period [count]
   if (Obj.nPeriods)  % move n-times
     sinCommand = sprintf('move sin %i %i %i',ampSteps,Obj.period,Obj.nPeriods);
-    Obj.VPrintF('[Obj] Starting %i sine movements with\n',Obj.nPeriods);
+    Obj.VPrintFI('Starting %i sine movements with\n',Obj.nPeriods);
   else % move indefinately
     sinCommand = sprintf('move sin %i %i',ampSteps,Obj.period);
-    Obj.VPrintF('[Obj] Starting sine movement with\n');
+    Obj.VPrintFI('Starting sine movement with\n');
   end
 
   Obj.VPrintF('   max. velocity = %.1f mm/s\n',Obj.vMax);
