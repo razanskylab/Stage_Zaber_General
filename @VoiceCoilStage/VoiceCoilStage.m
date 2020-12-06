@@ -78,9 +78,20 @@ classdef VoiceCoilStage < ZaberStage
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods % short methods, which are not worth putting in a file
+    function [] = Get_Stage_Ready(Obj)
+      if (Obj.temperature > 45)
+        error('Voice coil stage too hot!!!! Remove power immediately!');
+      else
+        Obj.VPrintFI('Stage temperature %2.1f C. Cool cool...\n',Obj.temperature);
+        Obj.Home();
+        Obj.Force_Off(); % let the stage relax...
+      end 
+      Obj.Wait_Ready();
+    end
+
     function [] = Stop_Sin(Obj)
       % reply = Obj.Dev.request('move sin stop', []);
-      [failed,reply] = Obj.Send_Generic_Command('move sin stop');
+      [failed,~] = Obj.Send_Generic_Command('move sin stop');
       if failed
         short_warn('Force off command failed!');
       end
