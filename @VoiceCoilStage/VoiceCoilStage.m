@@ -80,6 +80,7 @@ classdef VoiceCoilStage < ZaberStage
   methods % short methods, which are not worth putting in a file
     function [] = Get_Stage_Ready(Obj)
       if (Obj.temperature > 45)
+        Obj.Force_Off(); % let the stage relax...
         error('Voice coil stage too hot!!!! Remove power immediately!');
       else
         Obj.VPrintFI('Stage temperature %2.1f C. Cool cool...\n',Obj.temperature);
