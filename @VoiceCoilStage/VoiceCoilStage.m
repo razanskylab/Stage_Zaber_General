@@ -46,6 +46,7 @@ classdef VoiceCoilStage < ZaberStage
     RANGE = [0 12]; % [mm] min / max travel range
     MAX_SPEED = 1500; % [mm/s] max speed limit = maxspeed setting of 12288000
     DEFAULT_VEL = 10; % [mm/s]
+    INVERTED_STAGE = false;
   end
 
   properties (Constant, Hidden = true)
@@ -117,8 +118,9 @@ classdef VoiceCoilStage < ZaberStage
   methods % set / get methods
     % simple dependend variables -----------------------------------------------
     function [period] = get.period(Obj)
-      period = 1./(Obj.bScanRate)*2;
-      period = round(period*1000); % we need a ms, integer period
+      halfPeriod = 1./Obj.bScanRate;
+      fullPeriod = 2.*halfPeriod;
+      period = round(fullPeriod*1000); % we need a ms, integer period
     end
 
     function [nPeriods] = get.nPeriods(Obj)
@@ -130,11 +132,16 @@ classdef VoiceCoilStage < ZaberStage
     end
 
     function [vMax] = get.vMax(Obj)
-      vMax = Obj.sinRange*pi/(Obj.period*1e-3);
+      % vMax = 2*pi*Obj.sinRange*/(Obj.period*1e-3);
+      f = 1./(Obj.period*1e-3);
+      A = Obj.sinRange./2;
+      vMax = 2*pi * f * A;
     end
 
     function [accMax] = get.accMax(Obj)
-      accMax = Obj.sinRange./2*(2*pi/(Obj.period*1e-3)).^2;
+      % accMax = Obj.sinRange.*(2*pi/(Obj.period*1e-3)).^2;
+      f = 1./(Obj.period*1e-3);
+      accMax = 2.*pi^2 * Obj.sinRange./2 * f^2;
     end
 
     % --------------------------------------------------------------------------

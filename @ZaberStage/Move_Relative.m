@@ -1,6 +1,8 @@
 function [] = Move_Relative(Obj,posDelta)
   import zaber.motion.Units;
-  newPos = Obj.pos + posDelta;
+  if Obj.INVERTED_STAGE
+    newPos = Obj.pos - posDelta;
+  end
   if Obj.isConnected
     isValidPos = Obj.Check_Valid_Pos(newPos);
     if isValidPos

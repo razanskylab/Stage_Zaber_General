@@ -52,6 +52,7 @@ classdef ZaberStage < BaseHardwareClass
     RANGE; % [mm] min / max travel range
     MAX_SPEED; % [mm/s] max speed limit
     DEFAULT_VEL;
+    INVERTED_STAGE;
   end
 
   properties (Abstract = true, Constant, Hidden = true)
@@ -227,6 +228,9 @@ classdef ZaberStage < BaseHardwareClass
       import zaber.motion.Units;
 
       if Obj.isConnected
+        if Obj.INVERTED_STAGE
+          pos = Obj.RANGE(2) - pos;
+        end
         isValidPos = Obj.Check_Valid_Pos(pos);
         if isValidPos
           Obj.Axis.moveAbsolute(pos, Units.LENGTH_MILLIMETRES,true);
@@ -240,6 +244,9 @@ classdef ZaberStage < BaseHardwareClass
       import zaber.motion.Units;
       if Obj.isConnected
         pos = Obj.Axis.getSettings().get('pos', Units.LENGTH_MILLIMETRES);
+        if Obj.INVERTED_STAGE
+          pos = Obj.RANGE(2) - pos;
+        end
       else
         pos = [];
       end

@@ -31,6 +31,7 @@ classdef ZaberLinearStage < ZaberStage
     RANGE = [0 75]; % [mm] min / max travel range
     MAX_SPEED = 40; % [mm/s] max speed limit = maxspeed setting of 12288000
     DEFAULT_VEL = 20; % [mm/s]
+    INVERTED_STAGE = true;
   end
 
   properties (Constant, Hidden = true)
@@ -70,6 +71,7 @@ classdef ZaberLinearStage < ZaberStage
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   methods % set / get methods
+
   end % <<<<<<<< END SET/GET METHODS
 
 end % <<<<<<<< END BASE CLASS

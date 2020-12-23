@@ -5,6 +5,9 @@ function [] = Move_No_Wait(Obj,pos)
   import zaber.motion.Units;
 
   if Obj.isConnected
+    if Obj.INVERTED_STAGE
+      pos = Obj.RANGE(2) - pos;
+    end
     isValidPos = Obj.Check_Valid_Pos(pos);
     if isValidPos
       Obj.Axis.moveAbsolute(pos, Units.LENGTH_MILLIMETRES,false);
